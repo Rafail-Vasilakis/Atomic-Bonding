@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Εργαστήριο Ατομικών Δεσμών | Δρ. Ζαχαρόπουλος</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #111;
+            color: #eee;
+            overflow: hidden; /* Hide scrollbars */
+        }
+        #info-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 15px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            border: 1px solid #444;
+            max-width: 350px;
+            pointer-events: all; /* Allow clicking on the panel */
+        }
+        h1 {
+            color: #00aaff;
+            font-size: 24px;
+            margin-top: 0;
+        }
+        #description {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 10px;
+            display: flex;
+            gap: 10px;
+            pointer-events: all;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #333;
+            color: #fff;
+            border: 2px solid #555;
+            border-radius: 5px;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        button:hover {
+            background-color: #555;
+            border-color: #00aaff;
+        }
+        button.active {
+            background-color: #0077bb;
+            border-color: #00aaff;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="info-panel">
+        <h1>3D Εργαστήριο Δεσμών</h1>
+        <div id="description">
+            <p>Καλωσόρισες στο εικονικό μου εργαστήριο. Εδώ θα δούμε πώς "χτίζονται" τα υλικά σε ατομικό επίπεδο. Επίλεξε έναν τύπο δεσμού για να ξεκινήσει η προσομοίωση.</p>
+            <p><strong>Χρήση:</strong>
+                <br>• <strong>Περιστροφή:</strong> Αριστερό κλικ + Σύρσιμο
+                <br>• <strong>Zoom:</strong> Ρόδα ποντικιού
+                <br>• <strong>Μετακίνηση:</strong> Δεξί κλικ + Σύρσιμο
+            </p>
+        </div>
+    </div>
+
+    <div id="controls">
+        <button id="btn-ionic">Ιοντικός</button>
+        <button id="btn-covalent">Ομοιοπολικός</button>
+        <button id="btn-metallic">Μεταλλικός</button>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- ΔΗΛΩΣΗ ΟΛΩΝ ΤΩΝ ΜΕΤΑΒΛΗΤΩΝ ΣΤΗΝ ΑΡΧΗ ---
+        let scene, camera, renderer, controls;
+        let activeSceneObjects = [];
+        let customAnimation = null;
+
+        const descriptions = {
+            ionic: `<h3>Ιοντικός Δεσμός: Η Μεγάλη Αρπαχτή</h3>
+                    <p>Βλέπουμε ένα άτομο Νατρίου (Na) να <strong>μεταφέρει</strong> το ηλεκτρόνιο σθένους του στο Χλώριο (Cl). Δημιουργούνται δύο αντίθετα φορτισμένα ιόντα που έλκονται ισχυρά. Ο δεσμός είναι ισχυρός, αλλά μη κατευθυντικός. Χαρακτηριστικό των <strong>κεραμικών</strong>.</p>`,
+            covalent: `<h3>Ομοιοπολικός Δεσμός: Η Φιλία</h3>
+                       <p>Εδώ βλέπουμε τη δομή του <strong>διαμαντιού</strong>. Ένα άτομο άνθρακα <strong>μοιράζεται</strong> ηλεκτρόνια με τέσσερα γειτονικά, σχηματίζοντας μια πανίσχυρη, τετραεδρική δομή. Ο δεσμός είναι εξαιρετικά ισχυρός και <strong>κατευθυντικός</strong>. Χαρακτηριστικό των <strong>πολυμερών</strong> και ορισμένων <strong>κεραμικών</strong>.</p>`,
+            metallic: `<h3>Μεταλλικός Δεσμός: Η Κομμούνα</h3>
+                       <p>Τα θετικά "ιοντικά κέντρα" είναι διατεταγμένα σε ένα πλέγμα. Τα ηλεκτρόνια σθένους τους έχουν αποσπαστεί και σχηματίζουν μια <strong>"θάλασσα ηλεκτρονίων"</strong> που κινείται ελεύθερα. Αυτό εξηγεί την υψηλή <strong>αγωγιμότητα</strong> και την <strong>ολκιμότητα</strong> των <strong>μετάλλων</strong>.</p>`
+        };
+
+        init();
+        animate();
+
+        function init() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x111111);
+
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 15;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+            
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            directionalLight.position.set(5, 10, 7.5);
+            scene.add(directionalLight);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+
+            document.getElementById('btn-ionic').addEventListener('click', () => setupScene('ionic'));
+            document.getElementById('btn-covalent').addEventListener('click', () => setupScene('covalent'));
+            document.getElementById('btn-metallic').addEventListener('click', () => setupScene('metallic'));
+            window.addEventListener('resize', onWindowResize, false);
+            
+            setupScene('ionic');
+        }
+        
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function clearScene() {
+            activeSceneObjects.forEach(obj => {
+                scene.remove(obj);
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) {
+                    if (Array.isArray(obj.material)) {
+                        obj.material.forEach(m => m.dispose());
+                    } else {
+                        obj.material.dispose();
+                    }
+                }
+            });
+            activeSceneObjects = [];
+            customAnimation = null;
+        }
+        
+        function setActiveButton(type) {
+            document.querySelectorAll('#controls button').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${type}`).classList.add('active');
+        }
+
+        function setupScene(type) {
+            clearScene();
+            setActiveButton(type);
+            document.getElementById('description').innerHTML = descriptions[type];
+
+            switch (type) {
+                case 'ionic':
+                    createIonicScene();
+                    break;
+                case 'covalent':
+                    createCovalentScene();
+                    break;
+                case 'metallic':
+                    createMetallicScene();
+                    break;
+            }
+        }
+
+        function createIonicScene() {
+            const naMaterial = new THREE.MeshStandardMaterial({ color: 0xff4500, roughness: 0.5 });
+            const clMaterial = new THREE.MeshStandardMaterial({ color: 0x3cb371, roughness: 0.5 });
+            const electronMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00 });
+
+            const naAtom = new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 32), naMaterial);
+            naAtom.position.x = -4;
+
+            const clAtom = new THREE.Mesh(new THREE.SphereGeometry(2.5, 32, 32), clMaterial);
+            clAtom.position.x = 4;
+
+            const electron = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), electronMaterial);
+
+            const bondGeometry = new THREE.CylinderGeometry(0.1, 0.1, 7, 8);
+            const bondMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.3 });
+            const bond = new THREE.Mesh(bondGeometry, bondMaterial);
+            bond.rotation.z = Math.PI / 2;
+
+            scene.add(naAtom, clAtom, electron, bond);
+            activeSceneObjects.push(naAtom, clAtom, electron, bond);
+
+            customAnimation = () => {
+                const time = Date.now() * 0.001;
+                // Animate electron moving from Na to Cl
+                const transferTime = 2; // in seconds
+                const loopTime = (time % (transferTime * 2));
+                if (loopTime < transferTime) {
+                    electron.position.x = THREE.MathUtils.lerp(-4, 4, loopTime / transferTime);
+                } else {
+                    electron.position.x = 4;
+                }
+                electron.position.y = 0;
+            };
+        }
+
+        function createCovalentScene() {
+            const carbonMaterial = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.2 });
+            const bondMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
+
+            const centralCarbon = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), carbonMaterial);
+            scene.add(centralCarbon);
+            activeSceneObjects.push(centralCarbon);
+
+            const bondLength = 4;
+            const positions = [
+                new THREE.Vector3(1, 1, 1), new THREE.Vector3(1, -1, -1),
+                new THREE.Vector3(-1, 1, -1), new THREE.Vector3(-1, -1, 1)
+            ];
+
+            positions.forEach(pos => {
+                pos.normalize().multiplyScalar(bondLength);
+                const peripheralCarbon = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), carbonMaterial);
+                peripheralCarbon.position.copy(pos);
+                scene.add(peripheralCarbon);
+
+                const bond = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, bondLength, 16), bondMaterial);
+                bond.position.copy(pos).multiplyScalar(0.5);
+                bond.lookAt(new THREE.Vector3(0,0,0));
+                bond.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2));
+                
+                scene.add(bond);
+                activeSceneObjects.push(peripheralCarbon, bond);
+            });
+        }
+
+        function createMetallicScene() {
+            const ionMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.3 });
+            const electronMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff });
+            
+            const boxSize = 6;
+
+            for (let x = -1; x <= 1; x++) {
+                for (let y = -1; y <= 1; y++) {
+                    for (let z = -1; z <= 1; z++) {
+                        const ion = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), ionMaterial);
+                        ion.position.set(x * 5, y * 5, z * 5);
+                        scene.add(ion);
+                        activeSceneObjects.push(ion);
+                    }
+                }
+            }
+
+            const electrons = [];
+            for (let i = 0; i < 150; i++) {
+                const electron = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), electronMaterial);
+                electron.position.set(
+                    (Math.random() - 0.5) * boxSize * 2,
+                    (Math.random() - 0.5) * boxSize * 2,
+                    (Math.random() - 0.5) * boxSize * 2
+                );
+                electron.velocity = new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.2,
+                    (Math.random() - 0.5) * 0.2,
+                    (Math.random() - 0.5) * 0.2
+                );
+                scene.add(electron);
+                activeSceneObjects.push(electron);
+                electrons.push(electron);
+            }
+
+            customAnimation = () => {
+                electrons.forEach(e => {
+                    e.position.add(e.velocity);
+                    if (Math.abs(e.position.x) > boxSize) { e.position.x = Math.sign(e.position.x) * boxSize; e.velocity.x *= -1; }
+                    if (Math.abs(e.position.y) > boxSize) { e.position.y = Math.sign(e.position.y) * boxSize; e.velocity.y *= -1; }
+                    if (Math.abs(e.position.z) > boxSize) { e.position.z = Math.sign(e.position.z) * boxSize; e.velocity.z *= -1; }
+                });
+            };
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            if (customAnimation) {
+                customAnimation();
+            }
+            renderer.render(scene, camera);
+        }
+
+    </script>
+</body>
+</html>
