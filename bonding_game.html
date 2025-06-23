@@ -2,309 +2,391 @@
 <html lang="el">
 <head>
     <meta charset="UTF-8">
-    <title>3D Εργαστήριο Ατομικών Δεσμών | Δρ. Ζαχαρόπουλος</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Διαδραστική Συνταγή: Umbral Bloom Milkshake</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Serif:opsz,wght@8..144,300;8..144,400;8..144,700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Umbral Warmth -->
+    <!-- Application Structure Plan: A task-oriented, single-page application that guides the user through making the "Umbral Bloom" milkshake. The structure prioritizes the user's journey: 1. A captivating hero section with the final product image. 2. An interactive "Flavor Profile" diagram. 3. Tabbed sections for "Ingredients" and "Equipment". 4. A step-by-step accordion for the "Method". 5. Interactive charts to visualize the analytical data. 6. A collapsible "Deep Dive" section for gastronomic theory. This structure transforms a dense report into a user-friendly, engaging guide. -->
+    <!-- Visualization & Content Choices: Report Info: Flavor/Texture architecture tables -> Goal: Make complex profiles understandable -> Viz/Method: Interactive Radar & Polar Area charts using Chart.js -> Interaction: Hover tooltips provide details. Report Info: Step-by-step recipe -> Goal: Guide user without overwhelming -> Viz/Method: HTML/JS Accordion -> Interaction: User clicks to expand each phase. Justification: These choices break down complex information into digestible, interactive parts, enhancing user engagement and comprehension. Library: Chart.js for data visualization. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
     <style>
         body {
-            margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #111;
-            color: #eee;
-            overflow: hidden; /* Hide scrollbars */
+            font-family: 'Roboto Serif', serif;
+            background-color: #FDF8F2; /* Warm Neutral Background */
         }
-        #info-panel {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            padding: 15px;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            border: 1px solid #444;
-            max-width: 350px;
-            pointer-events: all; /* Allow clicking on the panel */
+        .bg-primary { background-color: #382A22; } /* Deep Chocolate Brown */
+        .bg-secondary { background-color: #6F4E37; } /* Coffee Brown */
+        .bg-accent { background-color: #D97706; } /* Warm Orange Accent */
+        .text-accent { color: #D97706; }
+        .text-primary { color: #382A22; }
+        .text-light { color: #FDF8F2; }
+        .border-accent { border-color: #D97706; }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
         }
-        h1 {
-            color: #00aaff;
-            font-size: 24px;
-            margin-top: 0;
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
         }
-        #description {
-            font-size: 14px;
-            line-height: 1.5;
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s ease-in-out;
         }
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border-radius: 10px;
-            display: flex;
-            gap: 10px;
-            pointer-events: all;
+        .flavor-node {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
         }
-        button {
-            padding: 10px 15px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #333;
-            color: #fff;
-            border: 2px solid #555;
-            border-radius: 5px;
-            transition: background-color 0.3s, border-color 0.3s;
+        .flavor-node:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
-        button:hover {
-            background-color: #555;
-            border-color: #00aaff;
+        .loader {
+            border: 8px solid #f3f3f3;
+            border-top: 8px solid #382A22;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
         }
-        button.active {
-            background-color: #0077bb;
-            border-color: #00aaff;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .quantity {
+            color: #fcd34d; /* A lighter accent color for quantity */
+            font-size: 0.9em;
+            display: block;
+            margin-left: 1.25rem;
+            line-height: 1.2;
         }
     </style>
 </head>
-<body>
+<body class="text-primary antialiased">
 
-    <div id="info-panel">
-        <h1>3D Εργαστήριο Δεσμών</h1>
-        <div id="description">
-            <p>Καλωσόρισες στο εικονικό μου εργαστήριο. Εδώ θα δούμε πώς "χτίζονται" τα υλικά σε ατομικό επίπεδο. Επίλεξε έναν τύπο δεσμού για να ξεκινήσει η προσομοίωση.</p>
-            <p><strong>Χρήση:</strong>
-                <br>• <strong>Περιστροφή:</strong> Αριστερό κλικ + Σύρσιμο
-                <br>• <strong>Zoom:</strong> Ρόδα ποντικιού
-                <br>• <strong>Μετακίνηση:</strong> Δεξί κλικ + Σύρσιμο
-            </p>
+    <main class="container mx-auto px-4 py-8 max-w-5xl">
+
+        <header class="text-center mb-12">
+            <h1 class="text-5xl md:text-6xl font-bold text-accent mb-2">Umbral Bloom</h1>
+            <p class="text-xl text-secondary">Η Επόμενη Μέρα του Milkshake Σοκολάτας</p>
+        </header>
+        
+        <section id="hero" class="mb-16">
+    <div class="bg-primary rounded-2xl shadow-2xl p-6 md:p-8 flex flex-col items-center justify-center min-h-[400px]">
+        <!-- The container for your static image -->
+        <div class="w-full max-w-md h-96 rounded-lg">
+            <img src="milkshake-image.png" alt="Οπτικοποίηση του Umbral Bloom Milkshake" class="w-full h-full object-cover rounded-lg">
+        </div>
+        <p class="text-light text-center mt-6 text-lg max-w-2xl">
+            Καλώς ήρθατε στην εμπειρία "Umbral Bloom". Αυτός ο οδηγός θα σας καθοδηγήσει στη δημιουργία όχι απλώς ενός milkshake, αλλά ενός πολυαισθητηριακού επιδορπίου.
+        </p>
+    </div>
+</section>
+
+        <section id="profile" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-8">Η Ανατομία της Απόλαυσης</h2>
+            <p class="text-center text-secondary max-w-3xl mx-auto mb-12">Κάθε συστατικό έχει επιλεγεί σχολαστικά για να δημιουργήσει μια συμφωνία γεύσεων και υφών. Κάντε κλικ σε κάθε στοιχείο για να ανακαλύψετε τον ρόλο του.</p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <h3 class="text-2xl font-bold mb-4 text-accent">Προφίλ Γεύσης</h3>
+                    <div class="space-y-4">
+                        <div class="flavor-node bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="showInfo('flavor-1')">Βαθύ Σοκολατένιο Θεμέλιο</div>
+                        <div class="flavor-node bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="showInfo('flavor-2')">Πικρή Πολυπλοκότητα (Espresso)</div>
+                        <div class="flavor-node bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="showInfo('flavor-3')">Αλμυρό/Umami Βάθος (Βύνη & Αλάτι)</div>
+                        <div class="flavor-node bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="showInfo('flavor-4')">Αρωματικό Καρύκευμα (Chipotle & Κανέλα)</div>
+                        <div class="flavor-node bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="showInfo('flavor-5')">Φωτεινή Πινελιά (Πορτοκάλι)</div>
+                    </div>
+                </div>
+                <div class="text-center">
+                     <h3 class="text-2xl font-bold mb-4 text-accent">Πυρήνας</h3>
+                     <div class="flex items-center justify-center h-full">
+                        <div class="w-48 h-48 bg-primary rounded-full flex items-center justify-center text-center p-4 shadow-xl">
+                            <span class="text-light text-3xl font-bold">Umbral Bloom</span>
+                        </div>
+                     </div>
+                </div>
+                <div class="text-center">
+                    <h3 class="text-2xl font-bold mb-4 text-accent">Προφίλ Υφής</h3>
+                    <div class="space-y-4">
+                        <div class="flavor-node bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="showInfo('texture-1')">Απόλυτα Βελούδινη Βάση</div>
+                        <div class="flavor-node bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="showInfo('texture-2')">Έντονη Τραγανή Αντίθεση (Πεκάν)</div>
+                        <div class="flavor-node bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="showInfo('texture-3')">Ικανοποιητική Μαστιχωτή Υφή (Brownie)</div>
+                        <div class="flavor-node bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="showInfo('texture-4')">Εφήμερη Αέρινη Υφή (Προαιρετικός Αφρός)</div>
+                        <div class="flavor-node bg-white p-4 rounded-lg shadow-md cursor-pointer" onclick="showInfo('texture-5')">Λιωμένη Απόλαυση (Γκανάζ)</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="recipe" class="mb-16 bg-secondary text-light p-6 md:p-10 rounded-2xl shadow-xl">
+            <h2 class="text-3xl font-bold text-center mb-8 text-white">Η Αλχημεία: Υλικά & Μέθοδος</h2>
+            <div class="max-w-4xl mx-auto">
+                <div class="flex justify-center border-b border-gray-500 mb-6">
+                    <button id="ingredients-btn" class="py-2 px-6 font-bold text-lg border-b-4 border-accent text-white">Υλικά</button>
+                    <button id="equipment-btn" class="py-2 px-6 font-bold text-lg border-b-4 border-transparent text-gray-300">Εξοπλισμός</button>
+                </div>
+                <div id="ingredients-content">
+                    <p class="text-center mb-6">Αυτά είναι τα δομικά στοιχεία της δημιουργίας σας. Η ποιότητα εδώ είναι το κλειδί.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-4 text-sm">
+                        <ul class="space-y-3">
+                            <li class="font-bold text-accent text-base">Βάση Milkshake</li>
+                            <li>✓ Παγωτό μαύρης σοκολάτας <span class="quantity">Υψηλής ποιότητας, με 70% κακάο (~300g)</span></li>
+                            <li>✓ Πλήρες γάλα, φρέσκο <span class="quantity">(~120ml)</span></li>
+                            <li>✓ Σκόνη μαύρης βύνης (dark malt) <span class="quantity">(2 κ.σ.)</span></li>
+                            <li>✓ Σκόνη στιγμιαίου espresso <span class="quantity">(1 κ.γ.)</span></li>
+                            <li>✓ Καπνιστό θαλασσινό αλάτι <span class="quantity">(μία πρέζα)</span></li>
+                            <li>✓ Πάστα ή εκχύλισμα βανίλιας <span class="quantity">(½ κ.γ.)</span></li>
+                        </ul>
+                        <ul class="space-y-3">
+                            <li class="font-bold text-accent text-base">Πικάντικη Γκανάζ</li>
+                            <li>✓ Μαύρη σοκολάτα κουβερτούρα <span class="quantity">72-80% κακάο (50g)</span></li>
+                            <li>✓ Παχύρρευστη κρέμα γάλακτος <span class="quantity">Με 35-36% λιπαρά (50ml)</span></li>
+                            <li>✓ Σκόνη chipotle <span class="quantity">(μία πρέζα)</span></li>
+                            <li>✓ Κανέλα Κεϋλάνης <span class="quantity">(μία πρέζα)</span></li>
+                            <li>✓ Ξύσμα από ακέρωτο πορτοκάλι <span class="quantity">(από ¼ πορτοκάλι)</span></li>
+                        </ul>
+                        <ul class="space-y-3">
+                            <li class="font-bold text-accent text-base">Υφές & Γαρνιτούρες</li>
+                            <li>✓ Πεκάν, ωμά <span class="quantity">(~30g)</span></li>
+                            <li>✓ Σιρόπι σφενδάμου, καθαρό <span class="quantity">(1 κ.σ.)</span></li>
+                            <li>✓ Πιπέρι καγιέν <span class="quantity">(μία πρέζα)</span></li>
+                            <li>✓ Κομμάτια brownie (fudgy) <span class="quantity">(1 μικρό)</span></li>
+                            <li>✓ Φέτα πορτοκαλιού, ακέρωτου <span class="quantity">(1 λεπτή φέτα)</span></li>
+                            <li>✓ Σκόνη κακάο, χωρίς ζάχαρη <span class="quantity">(για πασπάλισμα)</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <div id="equipment-content" class="hidden">
+                     <p class="text-center mb-6">Ο σωστός εξοπλισμός εξασφαλίζει την τέλεια υφή και παρουσίαση.</p>
+                    <ul class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 max-w-md mx-auto">
+                        <li>✓ Blender</li>
+                        <li>✓ Μικρή κατσαρόλα</li>
+                        <li>✓ Ζεστέρ (ξύστης)</li>
+                        <li>✓ Ταψί</li>
+                        <li>✓ Κουτάλια & μεζούρες</li>
+                        <li>✓ Ψηλό ποτήρι σερβιρίσματος</li>
+                        <li>✓ (Προαιρετικά) Σιφόνι & αμπούλες</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div id="method" class="mt-12">
+                <div class="accordion-item border-b border-gray-500 py-4">
+                    <button class="accordion-header w-full flex justify-between items-center text-left text-xl font-bold">
+                        <span>Φάση 1: Προετοιμασία Στοιχείων</span>
+                        <span class="transform transition-transform duration-300">▼</span>
+                    </button>
+                    <div class="accordion-content pt-4 text-gray-200">
+                         <ol class="list-decimal list-inside mt-2 space-y-2">
+                            <li><strong>Καραμελωμένα Πεκάν:</strong> Καβουρδίστε τα πεκάν και ανακατέψτε τα με σιρόπι σφενδάμου και μια υποψία καγιέν. Απλώστε τα σε ταψί και αφήστε τα να κρυώσουν.</li>
+                            <li><strong>Πικάντικη Γκανάζ:</strong> Ζεστάνετε την κρέμα γάλακτος. Ρίξτε την πάνω από την ψιλοκομμένη σοκολάτα, το chipotle, την κανέλα και το ξύσμα. Ανακατέψτε μέχρι να γίνει λεία.</li>
+                            <li><strong>Άλλες Γαρνιτούρες:</strong> Ετοιμάστε το θραύσμα σοκολάτας, καψαλίστε τη φέτα πορτοκαλιού και παγώστε καλά το ποτήρι σερβιρίσματος.</li>
+                        </ol>
+                    </div>
+                </div>
+                 <div class="accordion-item border-b border-gray-500 py-4">
+                    <button class="accordion-header w-full flex justify-between items-center text-left text-xl font-bold">
+                        <span>Φάση 2: Η Βελούδινη Βάση</span>
+                        <span class="transform transition-transform duration-300">▼</span>
+                    </button>
+                    <div class="accordion-content pt-4 text-gray-200">
+                        <ol class="list-decimal list-inside mt-2 space-y-2">
+                            <li>Αφήστε το παγωτό να μαλακώσει ελαφρώς για 5-10 λεπτά.</li>
+                            <li>Στο μπλέντερ, συνδυάστε το παγωτό, το κρύο γάλα, τη σκόνη βύνης, τον espresso, το αλάτι και τη βανίλια.</li>
+                            <li>Αναμείξτε σε χαμηλή ταχύτητα μέχρι το μείγμα να γίνει λείο.</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="accordion-item py-4">
+                    <button class="accordion-header w-full flex justify-between items-center text-left text-xl font-bold">
+                        <span>Φάση 3: Η Συναρμολόγηση - Ο Άνθος</span>
+                        <span class="transform transition-transform duration-300">▼</span>
+                    </button>
+                    <div class="accordion-content pt-4 text-gray-200">
+                        <ol class="list-decimal list-inside mt-2 space-y-2">
+                             <li>Περιχύστε γκανάζ στο εσωτερικό του παγωμένου ποτηριού.</li>
+                             <li>Ρίξτε το μισό milkshake. Προσθέστε πεκάν και κομμάτια brownie.</li>
+                             <li>Προσθέστε άλλη μια στρώση γκανάζ και το υπόλοιπο milkshake.</li>
+                             <li>Γαρνίρετε καλλιτεχνικά και σερβίρετε αμέσως.</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="charts" class="mb-16">
+            <h2 class="text-3xl font-bold text-center mb-8">Οπτικοποίηση Δεδομένων</h2>
+            <p class="text-center text-secondary max-w-3xl mx-auto mb-12">Περάστε το ποντίκι πάνω από τα γραφήματα για να δείτε πώς κάθε στοιχείο συμβάλλει στη συνολική εμπειρία.</p>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-xl font-bold text-center mb-4">Αρχιτεκτονική Γεύσης</h3>
+                    <div class="chart-container">
+                        <canvas id="flavorChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-2xl shadow-lg">
+                    <h3 class="text-xl font-bold text-center mb-4">Υφολογικός Καμβάς</h3>
+                     <div class="chart-container">
+                        <canvas id="textureChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="deep-dive" class="bg-primary text-light p-6 md:p-10 rounded-2xl shadow-xl">
+             <div class="accordion-item">
+                <button class="accordion-header w-full flex justify-between items-center text-left text-2xl font-bold text-white">
+                    <span>Το "Γιατί": Μια Βαθύτερη Ματιά</span>
+                    <span class="transform transition-transform duration-300">▼</span>
+                </button>
+                <div class="accordion-content pt-4 text-gray-300 space-y-4">
+                    <div>
+                        <h4 class="font-bold text-accent">Η Επιστήμη της Ηδυπάθειας:</h4>
+                        <p class="text-sm">Το λίπος από το πλήρες παγωτό και το γάλα δημιουργεί μια βελούδινη αίσθηση στο στόμα, ενώ οι ενισχυτές όπως το αλάτι και η βύνη εντείνουν την αντίληψη της σοκολατένιας γεύσης.</p>
+                    </div>
+                     <div>
+                        <h4 class="font-bold text-accent">Νευρογαστρονομία σε Δράση:</h4>
+                        <p class="text-sm">Η παρουσίαση δεν είναι απλώς διακόσμηση. Τα έντονα χρώματα και οι αντιθετικές υφές προετοιμάζουν τον εγκέφαλο για μια πιο σύνθετη και απολαυστική εμπειρία.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="text-center py-6 text-secondary text-sm">
+        <p>Μια διαδραστική μεταφορά της αναφοράς "Η Επόμενη Μέρα του Milkshake Σοκολάτας".</p>
+        <p>&copy; 2024.</p>
+    </footer>
+
+    <div id="info-modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-md w-full relative transform transition-all duration-300 scale-95">
+             <button onclick="closeInfo()" class="absolute top-4 right-4 text-gray-500 hover:text-primary">&times;</button>
+             <h3 id="info-title" class="text-2xl font-bold mb-4 text-accent"></h3>
+             <p id="info-content" class="text-secondary"></p>
         </div>
     </div>
 
-    <div id="controls">
-        <button id="btn-ionic">Ιοντικός</button>
-        <button id="btn-covalent">Ομοιοπολικός</button>
-        <button id="btn-metallic">Μεταλλικός</button>
-    </div>
 
-    <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-        }
-    }
-    </script>
-
-    <script type="module">
-        import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-
-        // --- ΔΗΛΩΣΗ ΟΛΩΝ ΤΩΝ ΜΕΤΑΒΛΗΤΩΝ ΣΤΗΝ ΑΡΧΗ ---
-        let scene, camera, renderer, controls;
-        let activeSceneObjects = [];
-        let customAnimation = null;
-
-        const descriptions = {
-            ionic: `<h3>Ιοντικός Δεσμός: Η Μεγάλη Αρπαχτή</h3>
-                    <p>Βλέπουμε ένα άτομο Νατρίου (Na) να <strong>μεταφέρει</strong> το ηλεκτρόνιο σθένους του στο Χλώριο (Cl). Δημιουργούνται δύο αντίθετα φορτισμένα ιόντα που έλκονται ισχυρά. Ο δεσμός είναι ισχυρός, αλλά μη κατευθυντικός. Χαρακτηριστικό των <strong>κεραμικών</strong>.</p>`,
-            covalent: `<h3>Ομοιοπολικός Δεσμός: Η Φιλία</h3>
-                       <p>Εδώ βλέπουμε τη δομή του <strong>διαμαντιού</strong>. Ένα άτομο άνθρακα <strong>μοιράζεται</strong> ηλεκτρόνια με τέσσερα γειτονικά, σχηματίζοντας μια πανίσχυρη, τετραεδρική δομή. Ο δεσμός είναι εξαιρετικά ισχυρός και <strong>κατευθυντικός</strong>. Χαρακτηριστικό των <strong>πολυμερών</strong> και ορισμένων <strong>κεραμικών</strong>.</p>`,
-            metallic: `<h3>Μεταλλικός Δεσμός: Η Κομμούνα</h3>
-                       <p>Τα θετικά "ιοντικά κέντρα" είναι διατεταγμένα σε ένα πλέγμα. Τα ηλεκτρόνια σθένους τους έχουν αποσπαστεί και σχηματίζουν μια <strong>"θάλασσα ηλεκτρονίων"</strong> που κινείται ελεύθερα. Αυτό εξηγεί την υψηλή <strong>αγωγιμότητα</strong> και την <strong>ολκιμότητα</strong> των <strong>μετάλλων</strong>.</p>`
-        };
-
-        init();
-        animate();
-
-        function init() {
-            scene = new THREE.Scene();
-            scene.background = new THREE.Color(0x111111);
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.z = 15;
-
-            renderer = new THREE.WebGLRenderer({ antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            document.body.appendChild(renderer.domElement);
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
             
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-            scene.add(ambientLight);
-            const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-            directionalLight.position.set(5, 10, 7.5);
-            scene.add(directionalLight);
+            const ingredientsBtn = document.getElementById('ingredients-btn');
+            const equipmentBtn = document.getElementById('equipment-btn');
+            const ingredientsContent = document.getElementById('ingredients-content');
+            const equipmentContent = document.getElementById('equipment-content');
 
-            controls = new OrbitControls(camera, renderer.domElement);
-            controls.enableDamping = true;
-
-            document.getElementById('btn-ionic').addEventListener('click', () => setupScene('ionic'));
-            document.getElementById('btn-covalent').addEventListener('click', () => setupScene('covalent'));
-            document.getElementById('btn-metallic').addEventListener('click', () => setupScene('metallic'));
-            window.addEventListener('resize', onWindowResize, false);
-            
-            setupScene('ionic');
-        }
-        
-        function onWindowResize() {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        }
-
-        function clearScene() {
-            activeSceneObjects.forEach(obj => {
-                scene.remove(obj);
-                if (obj.geometry) obj.geometry.dispose();
-                if (obj.material) {
-                    if (Array.isArray(obj.material)) {
-                        obj.material.forEach(m => m.dispose());
-                    } else {
-                        obj.material.dispose();
-                    }
-                }
+            ingredientsBtn.addEventListener('click', () => {
+                ingredientsContent.classList.remove('hidden');
+                equipmentContent.classList.add('hidden');
+                ingredientsBtn.classList.add('border-accent', 'text-white');
+                ingredientsBtn.classList.remove('border-transparent', 'text-gray-300');
+                equipmentBtn.classList.add('border-transparent', 'text-gray-300');
+                equipmentBtn.classList.remove('border-accent', 'text-white');
             });
-            activeSceneObjects = [];
-            customAnimation = null;
-        }
-        
-        function setActiveButton(type) {
-            document.querySelectorAll('#controls button').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`btn-${type}`).classList.add('active');
-        }
 
-        function setupScene(type) {
-            clearScene();
-            setActiveButton(type);
-            document.getElementById('description').innerHTML = descriptions[type];
-
-            switch (type) {
-                case 'ionic':
-                    createIonicScene();
-                    break;
-                case 'covalent':
-                    createCovalentScene();
-                    break;
-                case 'metallic':
-                    createMetallicScene();
-                    break;
-            }
-        }
-
-        function createIonicScene() {
-            const naMaterial = new THREE.MeshStandardMaterial({ color: 0xff4500, roughness: 0.5 });
-            const clMaterial = new THREE.MeshStandardMaterial({ color: 0x3cb371, roughness: 0.5 });
-            const electronMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00, emissive: 0xffff00 });
-
-            const naAtom = new THREE.Mesh(new THREE.SphereGeometry(1.5, 32, 32), naMaterial);
-            naAtom.position.x = -4;
-
-            const clAtom = new THREE.Mesh(new THREE.SphereGeometry(2.5, 32, 32), clMaterial);
-            clAtom.position.x = 4;
-
-            const electron = new THREE.Mesh(new THREE.SphereGeometry(0.3, 16, 16), electronMaterial);
-
-            const bondGeometry = new THREE.CylinderGeometry(0.1, 0.1, 7, 8);
-            const bondMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa, transparent: true, opacity: 0.3 });
-            const bond = new THREE.Mesh(bondGeometry, bondMaterial);
-            bond.rotation.z = Math.PI / 2;
-
-            scene.add(naAtom, clAtom, electron, bond);
-            activeSceneObjects.push(naAtom, clAtom, electron, bond);
-
-            customAnimation = () => {
-                const time = Date.now() * 0.001;
-                // Animate electron moving from Na to Cl
-                const transferTime = 2; // in seconds
-                const loopTime = (time % (transferTime * 2));
-                if (loopTime < transferTime) {
-                    electron.position.x = THREE.MathUtils.lerp(-4, 4, loopTime / transferTime);
-                } else {
-                    electron.position.x = 4;
-                }
-                electron.position.y = 0;
-            };
-        }
-
-        function createCovalentScene() {
-            const carbonMaterial = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.2 });
-            const bondMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
-
-            const centralCarbon = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), carbonMaterial);
-            scene.add(centralCarbon);
-            activeSceneObjects.push(centralCarbon);
-
-            const bondLength = 4;
-            const positions = [
-                new THREE.Vector3(1, 1, 1), new THREE.Vector3(1, -1, -1),
-                new THREE.Vector3(-1, 1, -1), new THREE.Vector3(-1, -1, 1)
-            ];
-
-            positions.forEach(pos => {
-                pos.normalize().multiplyScalar(bondLength);
-                const peripheralCarbon = new THREE.Mesh(new THREE.SphereGeometry(1, 32, 32), carbonMaterial);
-                peripheralCarbon.position.copy(pos);
-                scene.add(peripheralCarbon);
-
-                const bond = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, bondLength, 16), bondMaterial);
-                bond.position.copy(pos).multiplyScalar(0.5);
-                bond.lookAt(new THREE.Vector3(0,0,0));
-                bond.quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2));
+            equipmentBtn.addEventListener('click', () => {
+                equipmentContent.classList.remove('hidden');
+                ingredientsContent.classList.add('hidden');
+                equipmentBtn.classList.add('border-accent', 'text-white');
+                equipmentBtn.classList.remove('border-transparent', 'text-gray-300');
+                ingredientsBtn.classList.add('border-transparent', 'text-gray-300');
+                ingredientsBtn.classList.remove('border-accent', 'text-white');
+            });
+            
+            const accordionItems = document.querySelectorAll('.accordion-item');
+            accordionItems.forEach(item => {
+                const header = item.querySelector('.accordion-header');
+                const content = item.querySelector('.accordion-content');
+                const icon = header.querySelector('span:last-child');
                 
-                scene.add(bond);
-                activeSceneObjects.push(peripheralCarbon, bond);
-            });
-        }
+                header.addEventListener('click', () => {
+                    const isOpen = content.style.maxHeight && content.style.maxHeight !== '0px';
+                    const parentAccordion = header.closest('.accordion-item').parentElement;
 
-        function createMetallicScene() {
-            const ionMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.3 });
-            const electronMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff });
-            
-            const boxSize = 6;
+                    parentAccordion.querySelectorAll('.accordion-content').forEach(c => c.style.maxHeight = '0px');
+                    parentAccordion.querySelectorAll('.accordion-header span:last-child').forEach(i => i.style.transform = 'rotate(0deg)');
 
-            for (let x = -1; x <= 1; x++) {
-                for (let y = -1; y <= 1; y++) {
-                    for (let z = -1; z <= 1; z++) {
-                        const ion = new THREE.Mesh(new THREE.SphereGeometry(0.8, 16, 16), ionMaterial);
-                        ion.position.set(x * 5, y * 5, z * 5);
-                        scene.add(ion);
-                        activeSceneObjects.push(ion);
+                    if (!isOpen) {
+                        content.style.maxHeight = content.scrollHeight + 'px';
+                        if(icon) icon.style.transform = 'rotate(180deg)';
                     }
-                }
-            }
-
-            const electrons = [];
-            for (let i = 0; i < 150; i++) {
-                const electron = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), electronMaterial);
-                electron.position.set(
-                    (Math.random() - 0.5) * boxSize * 2,
-                    (Math.random() - 0.5) * boxSize * 2,
-                    (Math.random() - 0.5) * boxSize * 2
-                );
-                electron.velocity = new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.2,
-                    (Math.random() - 0.5) * 0.2,
-                    (Math.random() - 0.5) * 0.2
-                );
-                scene.add(electron);
-                activeSceneObjects.push(electron);
-                electrons.push(electron);
-            }
-
-            customAnimation = () => {
-                electrons.forEach(e => {
-                    e.position.add(e.velocity);
-                    if (Math.abs(e.position.x) > boxSize) { e.position.x = Math.sign(e.position.x) * boxSize; e.velocity.x *= -1; }
-                    if (Math.abs(e.position.y) > boxSize) { e.position.y = Math.sign(e.position.y) * boxSize; e.velocity.y *= -1; }
-                    if (Math.abs(e.position.z) > boxSize) { e.position.z = Math.sign(e.position.z) * boxSize; e.velocity.z *= -1; }
                 });
+            });
+
+            const infoData = {
+                'flavor-1': { title: 'Βαθύ Σοκολατένιο Θεμέλιο', content: 'Υψηλής ποιότητας μαύρη σοκολάτα και κακάο παρέχουν την κυρίαρχη, πλούσια σοκολατένια βάση που αποτελεί την ψυχή του milkshake.' },
+                'flavor-2': { title: 'Πικρή Πολυπλοκότητα', content: 'Η σκόνη espresso δεν προσθέτει γεύση καφέ, αλλά ενισχύει το βάθος της σοκολάτας, εξισορροπώντας τη γλυκύτητα με μια εκλεπτυσμένη πικράδα.' },
+                'flavor-3': { title: 'Αλμυρό/Umami Βάθος', content: 'Η σκόνη βύνης και το καπνιστό θαλασσινό αλάτι προσθέτουν μια απρόσμενη πολυπλοκότητα, ενισχύοντας όλες τις άλλες γεύσεις.' },
+                'flavor-4': { title: 'Αρωματικό Καρύκευμα', content: 'Μια υποψία chipotle προσφέρει καπνιστή θερμότητα, ενώ η κανέλα Κεϋλάνης προσθέτει αρωματικό βάθος.' },
+                'flavor-5': { title: 'Φωτεινή Πινελιά', content: 'Το ξύσμα πορτοκαλιού προσφέρει μια έκρηξη φρεσκάδας και αρωματικής αντίθεσης.' },
+                'texture-1': { title: 'Απόλυτα Βελούδινη Βάση', content: 'Η χρήση παγωτού υψηλής περιεκτικότητας σε λιπαρά και η σωστή τεχνική ανάμειξης εξασφαλίζουν μια πλούσια, κρεμώδη υφή.' },
+                'texture-2': { title: 'Έντονη Τραγανή Αντίθεση', content: 'Τα καραμελωμένα, πικάντικα πεκάν προσφέρουν ένα ικανοποιητικό "κρατς".' },
+                'texture-3': { title: 'Ικανοποιητική Μαστιχωτή Υφή', content: 'Μικρά, πλούσια κομμάτια brownie προσφέρουν μια ευχάριστη αντίσταση στο δάγκωμα.' },
+                'texture-4': { title: 'Εφήμερη Αέρινη Υφή', content: 'Ένας προαιρετικός, ελαφρύς αφρός στην κορυφή προσθέτει μια αιθέρια αντίθεση στην πυκνή βάση.' },
+                'texture-5': { title: 'Λιωμένη Απόλαυση', content: 'Ο στροβιλισμός της πικάντικης γκανάζ δημιουργεί θύλακες λιωμένης σοκολάτας.' },
             };
-        }
 
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            if (customAnimation) {
-                customAnimation();
+            window.showInfo = function(id) {
+                const modal = document.getElementById('info-modal');
+                const title = document.getElementById('info-title');
+                const content = document.getElementById('info-content');
+                const data = infoData[id];
+                title.textContent = data.title;
+                content.textContent = data.content;
+                modal.classList.remove('hidden');
+                setTimeout(() => modal.querySelector('div').classList.remove('scale-95'), 10);
             }
-            renderer.render(scene, camera);
-        }
 
+            window.closeInfo = function() {
+                const modal = document.getElementById('info-modal');
+                modal.querySelector('div').classList.add('scale-95');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            }
+
+            const flavorCtx = document.getElementById('flavorChart').getContext('2d');
+            new Chart(flavorCtx, {
+                type: 'radar',
+                data: {
+                    labels: ['Σοκολατένιο', 'Πικρό', 'Αλμυρό/Umami', 'Πικάντικο', 'Φρουτώδες', 'Γλυκό'],
+                    datasets: [{
+                        label: 'Ένταση Γεύσης',
+                        data: [10, 7, 6, 5, 4, 8],
+                        backgroundColor: 'rgba(217, 119, 6, 0.2)',
+                        borderColor: '#D97706',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#D97706'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: '#6F4E37' }, grid: { color: 'rgba(111, 78, 55, 0.2)' }, pointLabels: { font: { size: 12, weight: 'bold' }, color: '#382A22' }, ticks: { backdropColor: '#FDF8F2', color: '#6F4E37' } } }, plugins: { legend: { display: false } } }
+            });
+            
+            const textureCtx = document.getElementById('textureChart').getContext('2d');
+            new Chart(textureCtx, {
+                type: 'polarArea',
+                data: {
+                     labels: ['Βελούδινο', 'Τραγανό', 'Μαστιχωτό', 'Αέρινο', 'Ρευστό'],
+                    datasets: [{
+                        label: 'Συνεισφορά Υφής',
+                        data: [10, 7, 6, 4, 8],
+                        backgroundColor: ['rgba(56, 42, 34, 0.7)', 'rgba(217, 119, 6, 0.7)', 'rgba(111, 78, 55, 0.7)', 'rgba(253, 248, 242, 0.9)', 'rgba(161, 98, 7, 0.7)'],
+                        borderColor: '#382A22',
+                        borderWidth: 1
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { r: { grid: { color: 'rgba(111, 78, 55, 0.2)' }, ticks: { display: false } } }, plugins: { legend: { position: 'bottom', labels: { color: '#382A22', font: { size: 12 } } } } }
+            });
+        });
     </script>
 </body>
 </html>
